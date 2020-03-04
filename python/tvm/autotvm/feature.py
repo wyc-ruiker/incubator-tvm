@@ -58,6 +58,8 @@ try:
         "autotvm.feature.GetItervarFeature")
     _get_itervar_feature_flatten = tvm._ffi.get_global_func(
         "autotvm.feature.GetItervarFeatureFlatten")
+    _get_IR_graph = tvm._ffi.get_global_func(
+        "autotvm.feature.GetIRGraph")
 except ValueError as e:
     def raise_error(*args, **kwargs):  # pylint: disable=unused-argument
         raise RuntimeError("Cannot load autotvm c++ API")
@@ -205,3 +207,9 @@ def get_buffer_curve_sample_flatten(sch, args, sample_n=30):
     feas = _get_buffer_curve_sample_flatten(stmt, sample_n, False)
     feas = struct.unpack('%df' % (len(feas)//4), feas)
     return feas
+
+def get_IR_graph(sch, args):
+    stmt = ana_lower(sch, args, simple_mode=True)
+    feas = _get_IR_graph(stmt)
+    print("****** get IR graph Done!")
+
