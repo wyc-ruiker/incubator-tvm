@@ -208,8 +208,55 @@ def get_buffer_curve_sample_flatten(sch, args, sample_n=30):
     feas = struct.unpack('%df' % (len(feas)//4), feas)
     return feas
 
-def get_IR_graph(sch, args):
+def get_IR_graph(sch, args, output=False):
     stmt = ana_lower(sch, args, simple_mode=True)
-    feas = _get_IR_graph(stmt)
-    print("****** get IR graph Done!")
+    feas = _get_IR_graph(stmt, output)
+    
+    root_id, node_size, offset_node, offset_edge, offset_name = struct.unpack('5i', feas[:5 * 4])
+
+    if output == True:
+        print("Python Header:")
+        print(root_id, node_size, offset_node, offset_edge, offset_name)
+
+    node_nums = struct.unpack("%di" % node_size, feas[offset_node:offset_node + 4 * node_size])
+    node_list = []
+    offset_node += 4 * node_size
+    ct = 0
+    for i in range(node_size):
+        num = node_nums[i]
+        node_list.append(struct.unpack("%di" % num,
+                                    feas[offset_node + ct * 4:offset_node + (ct + num) * 4]))
+        ct += num
+    
+    edge_nums = struct.unpack("%di" % node_size, feas[offset_edge:offset_edge + 4 * node_size])
+    edge_list = []
+    offset_edge += 4 * node_size
+    ct = 0
+    for i in range(node_size):
+        num = edge_nums[i]
+        edge_list.append(struct.unpack("%di" % num,
+                                    feas[offset_edge + ct * 4:offset_edge + (ct + num) * 4]))
+        ct += num
+    
+    name_nums = struct.unpack("%di" % node_size, feas[offset_name:offset_name + 4 * node_size])
+    names = []
+    offset_name += 4 * node_size
+    ct = 0
+    for i in range(node_size):
+        num = name_nums[i]
+        names.append(struct.unpack("%ds" % num,
+                                feas[offset_name + ct:
+                                offset_name + ct + num])[0].decode())
+        ct += num
+    
+    if output == True:
+        print("Python node_list:")
+        for v in node_list:
+            if len(v) > 0:
+                print(v)
+        print("Python names:")
+        for v in names:
+            print(v)
+        print("Python output end")
+        
 
