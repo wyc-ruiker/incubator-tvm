@@ -22,6 +22,8 @@ import numpy as np
 
 from ..measure import MeasureInput, create_measure_batch
 
+from ..task.space import InstantiationError
+
 from ..env import GLOBAL_SCOPE
 
 logger = logging.getLogger('autotvm')
@@ -115,14 +117,20 @@ class Tuner(object):
 
         GLOBAL_SCOPE.in_tuning = True
         i = error_ct = 0
+        tot_error = 0
+        time_measure = []
         while i < n_trial:
             if not self.has_next():
                 break
 
             configs = self.next_batch(min(n_parallel, n_trial - i))
 
+            import time
+            beg = time.time()
             inputs = [MeasureInput(self.task.target, self.task, config) for config in configs]
             results = measure_batch(inputs)
+            end = time.time()
+            time_measure.append(end - beg)
 
             # keep best config
             for k, (inp, res) in enumerate(zip(inputs, results)):
@@ -133,6 +141,8 @@ class Tuner(object):
                 else:
                     flops = 0
                     error_ct += 1
+                    if isinstance(res.costs[0], InstantiationError):
+                        tot_error += 1
 
                 if flops > self.best_flops:
                     self.best_flops = flops
@@ -164,6 +174,8 @@ class Tuner(object):
 
         GLOBAL_SCOPE.in_tuning = False
         del measure_batch
+        print("\nSum time measure: ", sum(time_measure), "s")
+        print("Error Count: ", tot_error)
 
     def reset(self):
         """reset the status of tuner"""
